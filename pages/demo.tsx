@@ -240,7 +240,7 @@ export default function DemoPage() {
         });
 
         if (results.transcript.length > 0) {
-          const prompt = `Please give feedback on the following interview question: ${questions[1].prompts[1]} given the following transcript: ${results.transcript
+          const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${results.transcript
             }. ${selected.name === "Behavioral"
               ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks)."
               : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question."
