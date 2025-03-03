@@ -84,7 +84,10 @@ export default function DemoPage() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [generatedFeedback, setGeneratedFeedback] = useState("");
+  const [allQuestions, setAllQuestions] = useState(questions);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [responses, setResponses] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
 
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 768);
@@ -167,12 +170,10 @@ export default function DemoPage() {
 
       const unique_id = uuid();
 
-      // This checks if ffmpeg is loaded
       if (!ffmpeg.isLoaded()) {
         await ffmpeg.load();
       }
 
-      // This writes the file to memory, removes the video, and converts the audio to mp3
       ffmpeg.FS("writeFile", `${unique_id}.webm`, await fetchFile(file));
       await ffmpeg.run(
         "-i",
@@ -189,9 +190,7 @@ export default function DemoPage() {
         `${unique_id}.mp3`
       );
 
-      // This reads the converted file from the file system
       const fileData = ffmpeg.FS("readFile", `${unique_id}.mp3`);
-      // This creates a new file from the raw data
       const output = new File([fileData.buffer], `${unique_id}.mp3`, {
         type: "audio/mp3",
       });
@@ -200,14 +199,7 @@ export default function DemoPage() {
       formData.append("file", output, `${unique_id}.mp3`);
       formData.append("model", "whisper-1");
 
-      const question =
-        selected.name === "Behavioral"
-          ? `Tell me about yourself. Why don${`’`}t you walk me through your resume?`
-          : selectedInterviewer.name === "John"
-            ? "What is a Hash Table, and what is the average case and worst case time for each of its operations?"
-            : selectedInterviewer.name === "Richard"
-              ? "Uber is looking to expand its product line. Talk me through how you would approach this problem."
-              : "You have a 3-gallon jug and 5-gallon jug, how do you measure out exactly 4 gallons?";
+      const question = allQuestions[currentQuestionIndex].prompts[0];
 
       setStatus("Transcribing");
 
@@ -221,62 +213,59 @@ export default function DemoPage() {
       const results = await upload.json();
 
       if (upload.ok) {
-        setIsSuccess(true);
+        setIsSuccess(true); // Set success state for the current question
         setSubmitting(false);
 
-        if (results.error) {
-          setTranscript(results.error);
-        } else {
-          setTranscript(results.transcript);
-        }
+        // Process transcript and feedback
+        let transcriptText = results.error ? results.error : results.transcript;
+        setTranscript(transcriptText);
 
-        console.log("Uploaded successfully!");
+        const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${transcriptText}. ${allQuestions[currentQuestionIndex].name === "Behavioral"
+          ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks)."
+          : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question."
+          } \n\n\ Feedback on the candidate's response:`;
 
-        await Promise.allSettled([
-          new Promise((resolve) => setTimeout(resolve, 800)),
-        ]).then(() => {
-          setCompleted(true);
-          console.log("Success!");
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt,
+          }),
         });
 
-        if (results.transcript.length > 0) {
-          const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${results.transcript
-            }. ${selected.name === "Behavioral"
-              ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks)."
-              : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question."
-            } \n\n\ Feedback on the candidate's response:`;
+        if (!response.ok) {
+          throw new Error(response.statusText);
+        }
 
-          setGeneratedFeedback("");
-          const response = await fetch("/api/generate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              prompt,
-            }),
-          });
+        const data = response.body;
+        if (!data) {
+          return;
+        }
 
-          if (!response.ok) {
-            throw new Error(response.statusText);
-          }
+        const reader = data.getReader();
+        const decoder = new TextDecoder();
+        let done = false;
+        let feedbackText = "";
 
-          // This data is a ReadableStream
-          const data = response.body;
-          if (!data) {
-            return;
-          }
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          const chunkValue = decoder.decode(value);
+          feedbackText += chunkValue;
+        }
 
-          const reader = data.getReader();
-          const decoder = new TextDecoder();
-          let done = false;
+        // Store the response and feedback
+        setResponses((prev) => [...prev, transcriptText]);
+        setFeedbacks((prev) => [...prev, feedbackText]);
 
-          while (!done) {
-            const { value, done: doneReading } = await reader.read();
-            done = doneReading;
-            const chunkValue = decoder.decode(value);
-            setGeneratedFeedback((prev: any) => prev + chunkValue);
-          }
+        // Move to the next question or finish
+        if (currentQuestionIndex < allQuestions.length - 1) {
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+          restartVideo(); // Reset the video recording for the next question
+        } else {
+          setCompleted(true); // All questions answered, show feedback
         }
       } else {
         console.error("Upload failed.");
@@ -294,6 +283,7 @@ export default function DemoPage() {
     setCapturing(false);
     setIsVisible(true);
     setSeconds(150);
+    setIsSuccess(false); // Reset the success state
   }
 
   const videoConstraints = isDesktop
@@ -313,82 +303,53 @@ export default function DemoPage() {
         <div className="w-full min-h-screen flex flex-col px-4 pt-2 pb-8 md:px-8 md:py-2 bg-[#FCFCFC] relative overflow-x-hidden">
           {completed ? (
             <div className="w-full flex flex-col max-w-[1080px] mx-auto mt-[10vh] overflow-y-auto pb-8 md:pb-12">
-              <motion.div
-                initial={{ y: 20 }}
-                animate={{ y: 0 }}
-                transition={{ duration: 0.35, ease: [0.075, 0.82, 0.165, 1] }}
-                className="relative md:aspect-[16/9] w-full max-w-[1080px] overflow-hidden bg-[#1D2B3A] rounded-lg ring-1 ring-gray-900/5 shadow-md flex flex-col items-center justify-center"
-              >
-                <video
-                  className="w-full h-full rounded-lg"
-                  controls
-                  crossOrigin="anonymous"
-                  autoPlay
+              {allQuestions.map((question, index) => (
+                <motion.div
+                  key={question.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: 0.5,
+                    duration: 0.15,
+                    ease: [0.23, 1, 0.82, 1],
+                  }}
+                  className="mt-8 flex flex-col"
                 >
-                  <source
-                    src={URL.createObjectURL(
-                      new Blob(recordedChunks, { type: "video/mp4" })
-                    )}
-                    type="video/mp4"
-                  />
-                </video>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.5,
-                  duration: 0.15,
-                  ease: [0.23, 1, 0.82, 1],
-                }}
-                className="flex flex-col md:flex-row items-center mt-2 md:mt-4 md:justify-between space-y-1 md:space-y-0"
-              >
-
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.5,
-                  duration: 0.15,
-                  ease: [0.23, 1, 0.82, 1],
-                }}
-                className="mt-8 flex flex-col"
-              >
-                <div>
-                  <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
-                    Transcript
-                  </h2>
-                  <p className="prose prose-sm max-w-none">
-                    {transcript.length > 0
-                      ? transcript
-                      : "Don't think you said anything. Want to try again?"}
-                  </p>
-                </div>
-                <div className="mt-8">
-                  <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
-                    Feedback
-                  </h2>
-                  <div className="mt-4 text-sm flex gap-2.5 rounded-lg border border-[#EEEEEE] bg-[#FAFAFA] p-4 leading-6 text-gray-900 min-h-[100px]">
+                  <div>
+                    <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
+                      Question {index + 1}
+                    </h2>
                     <p className="prose prose-sm max-w-none">
-                      {generatedFeedback}
+                      {question.prompts[0]}
                     </p>
                   </div>
-                </div>
-              </motion.div>
+                  <div className="mt-4">
+                    <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
+                      Your Response
+                    </h2>
+                    <p className="prose prose-sm max-w-none">
+                      {responses[index]}
+                    </p>
+                  </div>
+                  <div className="mt-4">
+                    <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
+                      Feedback
+                    </h2>
+                    <div className="mt-4 text-sm flex gap-2.5 rounded-lg border border-[#EEEEEE] bg-[#FAFAFA] p-4 leading-6 text-gray-900 min-h-[100px]">
+                      <p className="prose prose-sm max-w-none">
+                        {feedbacks[index]}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           ) : (
             <div className="h-full w-full items-center flex flex-col mt-[10vh]">
               {recordingPermission ? (
                 <div className="w-full flex flex-col max-w-[1080px] mx-auto justify-center">
                   <h2 className="text-2xl font-semibold text-left text-[#1D2B3A] mb-2">
-                    {selected.name === "Behavioral"
-                      ? `Tell me about yourself. Why don${`’`}t you walk me through your resume?`
-                      : selectedInterviewer.name === "John"
-                        ? "What is a Hash Table, and what is the average case and worst case time for each of its operations?"
-                        : selectedInterviewer.name === "Richard"
-                          ? "Uber is looking to expand its product line. Talk me through how you would approach this problem."
-                          : "You have a 3-gallon jug and 5-gallon jug, how do you measure out exactly 4 gallons?"}
+                    {allQuestions[currentQuestionIndex].prompts[0]}
                   </h2>
                   <motion.div
                     initial={{ y: -20 }}
