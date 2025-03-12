@@ -403,22 +403,7 @@ export default function DemoPage() {
                               crossOrigin="anonymous"
                             >
                               <source
-                                src={
-                                  selectedInterviewer.name === "John"
-                                    ? selected.name === "Behavioral"
-                                      ? "https://liftoff-public.s3.amazonaws.com/DemoInterviewMale.mp4"
-                                      : "https://liftoff-public.s3.amazonaws.com/JohnTechnical.mp4"
-                                    : selectedInterviewer.name === "Richard"
-                                      ? selected.name === "Behavioral"
-                                        ? "https://liftoff-public.s3.amazonaws.com/RichardBehavioral.mp4"
-                                        : "https://liftoff-public.s3.amazonaws.com/RichardTechnical.mp4"
-                                      : selectedInterviewer.name === "Sarah"
-                                        ? selected.name === "Behavioral"
-                                          ? "https://liftoff-public.s3.amazonaws.com/BehavioralSarah.mp4"
-                                          : "https://liftoff-public.s3.amazonaws.com/SarahTechnical.mp4"
-                                        : selected.name === "Behavioral"
-                                          ? "https://liftoff-public.s3.amazonaws.com/DemoInterviewMale.mp4"
-                                          : "https://liftoff-public.s3.amazonaws.com/JohnTechnical.mp4"
+                                src={"https://liftoff-public.s3.amazonaws.com/DemoInterviewMale.mp4"
                                 }
                                 type="video/mp4"
                               />
@@ -798,143 +783,6 @@ export default function DemoPage() {
                     <div>
                       <button
                         onClick={() => {
-                          setStep(2);
-                        }}
-                        className="group rounded-full px-4 py-2 text-[13px] font-semibold transition-all flex items-center justify-center bg-[#1E2B3A] text-white hover:[linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)), #0D2247] no-underline flex gap-x-2  active:scale-95 scale-100 duration-75"
-                        style={{
-                          boxShadow:
-                            "0px 1px 4px rgba(13, 34, 71, 0.17), inset 0px 0px 0px 1px #061530, inset 0px 0px 0px 2px rgba(255, 255, 255, 0.1)",
-                        }}
-                      >
-                        <span> Continue </span>
-                        <svg
-                          className="w-5 h-5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M13.75 6.75L19.25 12L13.75 17.25"
-                            stroke="#FFF"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M19 12H4.75"
-                            stroke="#FFF"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ) : step === 2 ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 40 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -40 }}
-                  key="step-2"
-                  transition={{
-                    duration: 0.95,
-                    ease: [0.165, 0.84, 0.44, 1],
-                  }}
-                  className="max-w-lg mx-auto px-4 lg:px-0"
-                >
-                  <h2 className="text-4xl font-bold text-[#1E2B3A]">
-                    And an interviewer
-                  </h2>
-                  <p className="text-[14px] leading-[20px] text-[#1a2b3b] font-normal my-4">
-                    Choose whoever makes you feel comfortable. You can always
-                    try again with another one.
-                  </p>
-                  <div>
-                    <RadioGroup
-                      value={selectedInterviewer}
-                      onChange={setSelectedInterviewer}
-                    >
-                      <RadioGroup.Label className="sr-only">
-                        Server size
-                      </RadioGroup.Label>
-                      <div className="space-y-4">
-                        {interviewers.map((interviewer) => (
-                          <RadioGroup.Option
-                            key={interviewer.name}
-                            value={interviewer}
-                            className={({ checked, active }) =>
-                              classNames(
-                                checked
-                                  ? "border-transparent"
-                                  : "border-gray-300",
-                                active
-                                  ? "border-blue-500 ring-2 ring-blue-200"
-                                  : "",
-                                "relative cursor-pointer rounded-lg border bg-white px-6 py-4 shadow-sm focus:outline-none flex justify-between"
-                              )
-                            }
-                          >
-                            {({ active, checked }) => (
-                              <>
-                                <span className="flex items-center">
-                                  <span className="flex flex-col text-sm">
-                                    <RadioGroup.Label
-                                      as="span"
-                                      className="font-medium text-gray-900"
-                                    >
-                                      {interviewer.name}
-                                    </RadioGroup.Label>
-                                    <RadioGroup.Description
-                                      as="span"
-                                      className="text-gray-500"
-                                    >
-                                      <span className="block">
-                                        {interviewer.description}
-                                      </span>
-                                    </RadioGroup.Description>
-                                  </span>
-                                </span>
-                                <RadioGroup.Description
-                                  as="span"
-                                  className="flex text-sm ml-4 mt-0 flex-col text-right items-center justify-center"
-                                >
-
-
-                                </RadioGroup.Description>
-                                <span
-                                  className={classNames(
-                                    active ? "border" : "border-2",
-                                    checked
-                                      ? "border-blue-500"
-                                      : "border-transparent",
-                                    "pointer-events-none absolute -inset-px rounded-lg"
-                                  )}
-                                  aria-hidden="true"
-                                />
-                              </>
-                            )}
-                          </RadioGroup.Option>
-                        ))}
-                      </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="flex gap-[15px] justify-end mt-8">
-                    <div>
-                      <button
-                        onClick={() => setStep(1)}
-                        className="group rounded-full px-4 py-2 text-[13px] font-semibold transition-all flex items-center justify-center bg-[#f5f7f9] text-[#1E2B3A] no-underline active:scale-95 scale-100 duration-75"
-                        style={{
-                          boxShadow: "0 1px 1px #0c192714, 0 1px 3px #0c192724",
-                        }}
-                      >
-                        Previous step
-                      </button>
-                    </div>
-                    <div>
-                      <button
-                        onClick={() => {
                           setStep(3);
                         }}
                         className="group rounded-full px-4 py-2 text-[13px] font-semibold transition-all flex items-center justify-center bg-[#1E2B3A] text-white hover:[linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)), #0D2247] no-underline flex gap-x-2  active:scale-95 scale-100 duration-75"
@@ -976,8 +824,8 @@ export default function DemoPage() {
           </div>
           <div className="w-full h-[40vh] md:w-1/2 md:h-screen bg-[#F1F2F4] relative overflow-hidden">
 
-            <figure
-              className="absolute md:top-1/2 left-1/2 transform -translate-x-1/2 md:-mt-[240px] ml-[-380px] md:ml-0 grid scale-[0.5] sm:scale-[0.6] md:scale-[130%] w-[450px] h-[420px] bg-[#f5f7f9] text-[9px] origin-[50%_15%] md:origin-[50%_25%] rounded-[15px] overflow-hidden p-2 z-20"
+            <div
+              className="absolute md:top-1/2 left-1/2 transform -translate-x-1/2 md:-mt-[240px] ml-[-380px] md:ml-0 scale-[0.5] sm:scale-[0.6] md:scale-[130%] w-[450px] h-[420px] bg-[#f5f7f9] text-[9px] origin-[50%_15%] md:origin-[50%_25%] rounded-[15px] overflow-hidden p-2 z-20 shadow-lg"
 
               style={{
                 grid: "100%/repeat(1,calc(5px * 28)) 1fr",
@@ -985,7 +833,12 @@ export default function DemoPage() {
                   "0 192px 136px rgba(26,43,59,.23),0 70px 50px rgba(26,43,59,.16),0 34px 24px rgba(26,43,59,.13),0 17px 12px rgba(26,43,59,.1),0 7px 5px rgba(26,43,59,.07), 0 50px 100px -20px rgb(50 50 93 / 25%), 0 30px 60px -30px rgb(0 0 0 / 30%), inset 0 -2px 6px 0 rgb(10 37 64 / 35%)",
               }}
             >
-            </figure>
+              <img
+                src="/qnmark.png"
+                alt="Full image"
+                className="w-full h-full object-contain"
+              />
+            </div>
           </div>
         </div>
       )}
