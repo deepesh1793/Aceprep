@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRef, useState, useEffect, useCallback } from "react";
 import Webcam from "react-webcam";
 import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
+import { map } from "zod";
 
 const questions = [
   {
@@ -199,7 +200,7 @@ export default function DemoPage() {
       formData.append("file", output, `${unique_id}.mp3`);
       formData.append("model", "whisper-1");
 
-      const question = allQuestions[currentQuestionIndex].prompts[0];
+      const question = selected.prompts[currentQuestionIndex];
 
       setStatus("Transcribing");
 
@@ -261,7 +262,7 @@ export default function DemoPage() {
         setFeedbacks((prev) => [...prev, feedbackText]);
 
         // Move to the next question or finish
-        if (currentQuestionIndex < allQuestions.length - 1) {
+        if (currentQuestionIndex < selected.prompts.length - 1) {
           setCurrentQuestionIndex(currentQuestionIndex + 1);
           restartVideo(); // Reset the video recording for the next question
         } else {
@@ -320,7 +321,7 @@ export default function DemoPage() {
                       Question {index + 1}
                     </h2>
                     <p className="prose prose-sm max-w-none">
-                      {question.prompts[0]}
+                      {selected.prompts[index]}
                     </p>
                   </div>
                   <div className="mt-4">
@@ -349,7 +350,7 @@ export default function DemoPage() {
               {recordingPermission ? (
                 <div className="w-full flex flex-col max-w-[1080px] mx-auto justify-center">
                   <h2 className="text-2xl font-semibold text-left text-[#1D2B3A] mb-2">
-                    {allQuestions[currentQuestionIndex].prompts[0]}
+                    {selected.prompts[currentQuestionIndex]}
                   </h2>
                   <motion.div
                     initial={{ y: -20 }}
