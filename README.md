@@ -1,5 +1,4 @@
 <a>
-  <img alt="AcePrep – AI-Powered Mock Interviews" src="https://demo.useliftoff.com/opengraph-image">
   <h1 align="center">AcePrep Interviews</h1>
 </a>
 
