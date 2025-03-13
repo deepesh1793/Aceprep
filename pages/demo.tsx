@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRef, useState, useEffect, useCallback } from "react";
 import Webcam from "react-webcam";
 import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
-import { map } from "zod";
 
 const questions = [
   {
@@ -30,27 +29,6 @@ const questions = [
   },
 ];
 
-const interviewers = [
-  {
-    id: "John",
-    name: "John",
-    description: "Software Engineering",
-    level: "L3",
-  },
-  {
-    id: "Richard",
-    name: "Richard",
-    description: "Product Management",
-    level: "L5",
-  },
-  {
-    id: "Sarah",
-    name: "Sarah",
-    description: "Other",
-    level: "L7",
-  },
-];
-
 const ffmpeg = createFFmpeg({
   // corePath: `http://localhost:3000/ffmpeg/dist/ffmpeg-core.js`,
   // I've included a default import above (and files in the public directory), but you can also use a CDN like this:
@@ -64,9 +42,6 @@ function classNames(...classes: string[]) {
 
 export default function DemoPage() {
   const [selected, setSelected] = useState(questions[0]);
-  const [selectedInterviewer, setSelectedInterviewer] = useState(
-    interviewers[0]
-  );
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const webcamRef = useRef<Webcam | null>(null);
@@ -84,8 +59,6 @@ export default function DemoPage() {
   const [isVisible, setIsVisible] = useState(true);
   const [isDesktop, setIsDesktop] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [allQuestions, setAllQuestions] = useState(questions);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
@@ -219,9 +192,8 @@ export default function DemoPage() {
 
         // Process transcript and feedback
         let transcriptText = results.error ? results.error : results.transcript;
-        setTranscript(transcriptText);
 
-        const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${transcriptText}. ${allQuestions[currentQuestionIndex].name === "Behavioral"
+        const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${transcriptText}. ${selected.name === "Behavioral"
           ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks)."
           : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question."
           } \n\n\ Feedback on the candidate's response:`;
@@ -304,9 +276,9 @@ export default function DemoPage() {
         <div className="w-full min-h-screen flex flex-col px-4 pt-2 pb-8 md:px-8 md:py-2 bg-[#FCFCFC] relative overflow-x-hidden">
           {completed ? (
             <div className="w-full flex flex-col max-w-[1080px] mx-auto mt-[10vh] overflow-y-auto pb-8 md:pb-12">
-              {allQuestions.map((question, index) => (
+              {selected.prompts.map((question, index) => (
                 <motion.div
-                  key={question.id}
+                  key={question}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{
