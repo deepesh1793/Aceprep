@@ -49,10 +49,8 @@ export default function DemoPage() {
   const [capturing, setCapturing] = useState(false);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const [seconds, setSeconds] = useState(150);
-  const [videoEnded, setVideoEnded] = useState(false);
   const [recordingPermission, setRecordingPermission] = useState(true);
   const [cameraLoaded, setCameraLoaded] = useState(false);
-  const vidRef = useRef<HTMLVideoElement>(null);
   const [isSubmitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState("Processing");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -67,37 +65,17 @@ export default function DemoPage() {
     setIsDesktop(window.innerWidth >= 768);
   }, []);
 
-  useEffect(() => {
-    if (videoEnded) {
-      const element = document.getElementById("startTimer");
-
-      if (element) {
-        element.style.display = "flex";
-      }
-
-      setCapturing(true);
-      setIsVisible(false);
-
-      mediaRecorderRef.current = new MediaRecorder(
-        webcamRef?.current?.stream as MediaStream
-      );
-      mediaRecorderRef.current.addEventListener(
-        "dataavailable",
-        handleDataAvailable
-      );
-      mediaRecorderRef.current.start();
-    }
-  }, [videoEnded, webcamRef, setCapturing, mediaRecorderRef]);
 
   const handleStartCaptureClick = useCallback(() => {
-    const startTimer = document.getElementById("startTimer");
-    if (startTimer) {
-      startTimer.style.display = "none";
-    }
-
-    if (vidRef.current) {
-      vidRef.current.play();
-    }
+    setCapturing(true);
+    mediaRecorderRef.current = new MediaRecorder(
+      webcamRef?.current?.stream as MediaStream
+    );
+    mediaRecorderRef.current.addEventListener(
+      "dataavailable",
+      handleDataAvailable
+    );
+    mediaRecorderRef.current.start();
   }, [webcamRef, setCapturing, mediaRecorderRef]);
 
   const handleDataAvailable = useCallback(
@@ -252,13 +230,11 @@ export default function DemoPage() {
 
   function restartVideo() {
     setRecordedChunks([]);
-    setVideoEnded(false);
     setCapturing(false);
     setIsVisible(true);
     setSeconds(150);
-    setIsSuccess(false); // Reset the success state
+    setIsSuccess(false);
   }
-
   const videoConstraints = isDesktop
     ? { width: 1280, height: 720, facingMode: "user" }
     : { width: 480, height: 640, facingMode: "user" };
@@ -363,27 +339,6 @@ export default function DemoPage() {
                           {new Date(seconds * 1000).toISOString().slice(14, 19)}
                         </span>
                       </div>
-                      {isVisible && ( // If the video is visible (on screen) we show it
-                        <div className="block absolute top-[10px] sm:top-[20px] lg:top-[40px] left-auto right-[10px] sm:right-[20px] md:right-10 h-[80px] sm:h-[140px] md:h-[180px] aspect-video rounded z-20">
-                          <div className="h-full w-full aspect-video rounded md:rounded-lg lg:rounded-xl">
-                            <video
-                              id="question-video"
-                              onEnded={() => setVideoEnded(true)}
-                              controls={false}
-                              ref={vidRef}
-                              playsInline
-                              className="h-full object-cover w-full rounded-md md:rounded-[12px] aspect-video"
-                              crossOrigin="anonymous"
-                            >
-                              <source
-                                src={"https://liftoff-public.s3.amazonaws.com/DemoInterviewMale.mp4"
-                                }
-                                type="video/mp4"
-                              />
-                            </video>
-                          </div>
-                        </div>
-                      )}
                       <Webcam
                         mirrored
                         audio
@@ -526,7 +481,7 @@ export default function DemoPage() {
                               ) : (
                                 <button
                                   id="startTimer"
-                                  onClick={handleStartCaptureClick}
+                                  onClick={handleStartCaptureClick} // Directly call handleStartCaptureClick
                                   className="flex h-8 w-8 sm:h-8 sm:w-8 flex-col items-center justify-center rounded-full bg-red-500 text-white hover:shadow-xl ring-4 ring-white ring-offset-gray-500 ring-offset-2 active:scale-95 scale-100 duration-75"
                                 ></button>
                               )}
