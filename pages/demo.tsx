@@ -30,13 +30,11 @@ const questions = [
 ];
 
 const videoSources1 = [
-  // "https://liftoff-public.s3.amazonaws.com/DemoInterviewMale.mp4",
   "/videos/aiagent1.mp4",
   "/videos/aiagent2.mp4",
 
 ];
 const videoSources2 = [
-  // "https://liftoff-public.s3.amazonaws.com/JohnTechnical.mp4",
   "/videos/aiagent3.mp4",
   "/videos/aiagent4.mp4",
 ];
