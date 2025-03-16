@@ -23,7 +23,7 @@ const questions = [
     description: "From Google, Meta, and Apple",
     difficulty: "Medium",
     prompts: [
-      "What is a Hash Table, and what is the average case and worst case time for each of its operations?",
+      "What is a Hash Table and its time complexities?",
       "Explain the difference between a stack and a queue.",
     ],
   },
