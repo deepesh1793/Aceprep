@@ -13,7 +13,7 @@ const questions = [
     description: "From LinkedIn, Amazon, Adobe",
     difficulty: "Easy",
     prompts: [
-      "Tell me about yourself. Why don’t you walk me through your resume?",
+      "Walk me through your resume and introduce yourself.",
       "Tell me your strengths.",
     ],
   },
@@ -23,10 +23,20 @@ const questions = [
     description: "From Google, Meta, and Apple",
     difficulty: "Medium",
     prompts: [
-      "What is a Hash Table, and what is the average case and worst case time for each of its operations?",
+      "What is a Hash Table and its time complexities?",
       "Explain the difference between a stack and a queue.",
     ],
   },
+];
+
+const videoSources1 = [
+  "/videos/aiagent1.mp4",
+  "/videos/aiagent2.mp4",
+
+];
+const videoSources2 = [
+  "/videos/aiagent3.mp4",
+  "/videos/aiagent4.mp4",
 ];
 
 const ffmpeg = createFFmpeg({
@@ -41,6 +51,7 @@ function classNames(...classes: string[]) {
 }
 
 export default function DemoPage() {
+  const [currentQuestion, setCurrentQuestion] = useState("Tell me about yourself. Why don’t you walk me through your resume?");
   const [selected, setSelected] = useState(questions[0]);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -61,6 +72,20 @@ export default function DemoPage() {
   const [responses, setResponses] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
 
+ //ai agent video logic 
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+
+  const handleVideoEnd = () => {
+    setVideoEnded(true);
+  
+    
+    const activeVideoSources = selected === questions[0] ? videoSources1 : videoSources2;
+  
+    const nextIndex = (currentVideoIndex + 1) % activeVideoSources.length;
+    setCurrentVideoIndex(nextIndex);
+  
+  };
+  
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 768);
   }, []);
@@ -339,6 +364,26 @@ export default function DemoPage() {
                           {new Date(seconds * 1000).toISOString().slice(14, 19)}
                         </span>
                       </div>
+                      {isVisible && ( // If the video is visible (on screen) we show it
+                        <div className="block absolute top-[10px] sm:top-[20px] lg:top-[40px] left-auto right-[10px] sm:right-[20px] md:right-10 h-[80px] sm:h-[140px] md:h-[180px] aspect-video rounded z-20">
+                          <div className="h-full w-full aspect-video rounded md:rounded-lg lg:rounded-xl">
+                            <video
+                              id="question-video"
+                              onEnded={handleVideoEnd}
+                              controls={false}
+                              ref={vidRef}
+                              playsInline
+                              className="h-full object-cover w-full rounded-md md:rounded-[12px] aspect-video"
+                              crossOrigin="anonymous"
+                            >
+                             <source
+                                src={selected === questions[0] ? videoSources1[currentVideoIndex] : videoSources2[currentVideoIndex]}
+                                type="video/mp4"
+                              />
+                            </video>
+                          </div>
+                        </div>
+                      )}
                       <Webcam
                         mirrored
                         audio
