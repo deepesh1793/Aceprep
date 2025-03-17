@@ -60,8 +60,10 @@ export default function DemoPage() {
   const [capturing, setCapturing] = useState(false);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const [seconds, setSeconds] = useState(150);
+  const [videoEnded, setVideoEnded] = useState(false);
   const [recordingPermission, setRecordingPermission] = useState(true);
   const [cameraLoaded, setCameraLoaded] = useState(false);
+  const vidRef = useRef<HTMLVideoElement>(null);
   const [isSubmitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState("Processing");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -71,36 +73,58 @@ export default function DemoPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
+  const [overallFeedback, setOverallFeedback] = useState<string>("");
+  const [overallScore, setOverallScore] = useState<number>(0);
 
- //ai agent video logic 
+  //ai agent video logic 
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
   const handleVideoEnd = () => {
     setVideoEnded(true);
-  
-    
+
+
     const activeVideoSources = selected === questions[0] ? videoSources1 : videoSources2;
-  
+
     const nextIndex = (currentVideoIndex + 1) % activeVideoSources.length;
     setCurrentVideoIndex(nextIndex);
-  
+
   };
-  
+
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 768);
   }, []);
 
+  useEffect(() => {
+    if (videoEnded) {
+      const element = document.getElementById("startTimer");
+
+      if (element) {
+        element.style.display = "flex";
+      }
+
+      setCapturing(true);
+      setIsVisible(false);
+
+      mediaRecorderRef.current = new MediaRecorder(
+        webcamRef?.current?.stream as MediaStream
+      );
+      mediaRecorderRef.current.addEventListener(
+        "dataavailable",
+        handleDataAvailable
+      );
+      mediaRecorderRef.current.start();
+    }
+  }, [videoEnded, webcamRef, setCapturing, mediaRecorderRef]);
 
   const handleStartCaptureClick = useCallback(() => {
-    setCapturing(true);
-    mediaRecorderRef.current = new MediaRecorder(
-      webcamRef?.current?.stream as MediaStream
-    );
-    mediaRecorderRef.current.addEventListener(
-      "dataavailable",
-      handleDataAvailable
-    );
-    mediaRecorderRef.current.start();
+    const startTimer = document.getElementById("startTimer");
+    if (startTimer) {
+      startTimer.style.display = "none";
+    }
+
+    if (vidRef.current) {
+      vidRef.current.play();
+    }
   }, [webcamRef, setCapturing, mediaRecorderRef]);
 
   const handleDataAvailable = useCallback(
@@ -255,11 +279,13 @@ export default function DemoPage() {
 
   function restartVideo() {
     setRecordedChunks([]);
+    setVideoEnded(false);
     setCapturing(false);
     setIsVisible(true);
     setSeconds(150);
-    setIsSuccess(false);
+    setIsSuccess(false); // Reset the success state
   }
+
   const videoConstraints = isDesktop
     ? { width: 1280, height: 720, facingMode: "user" }
     : { width: 480, height: 640, facingMode: "user" };
@@ -270,6 +296,75 @@ export default function DemoPage() {
       setCameraLoaded(true);
     }, 1000);
   };
+
+  const generateOverallFeedback = async (feedbacks: string[], prompts: string[]) => {
+    const feedbackSummary = feedbacks.map((feedback, index) => {
+      return `Question ${index + 1}: ${prompts[index]}\nFeedback: ${feedback}\n`;
+    }).join("\n");
+
+    const prompt = `
+      You are an expert career coach analyzing a candidate's performance in a mock interview. Below is the feedback for each question the candidate answered:
+  
+      ---
+      ${feedbackSummary}
+      ---
+  
+      Based on the feedback above, provide an overall evaluation of the candidate's performance. Include the following:
+      1. Strengths: What did the candidate do well across all responses?
+      2. Weaknesses: What areas need improvement?
+      3. Suggestions: Provide actionable advice for the candidate to improve their interview skills.
+      4. Overall Assessment: Summarize the candidate's performance in one or two sentences.
+      5. Score: Provide a score out of 10 based on their performance. Consider factors like clarity, relevance, communication skills, and technical accuracy (if applicable). The score should be displayed as "Score: X/10".
+  
+      Ensure the feedback is constructive, professional, and tailored to help the candidate improve.
+    `;
+
+    const response = await fetch("/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!response.ok) throw new Error(response.statusText);
+
+    const data = response.body;
+    if (!data) return { feedback: "", score: 0 };
+
+    const reader = data.getReader();
+    const decoder = new TextDecoder();
+    let done = false;
+    let overallFeedback = "";
+
+    while (!done) {
+      const { value, done: doneReading } = await reader.read();
+      done = doneReading;
+      const chunkValue = decoder.decode(value);
+      overallFeedback += chunkValue;
+    }
+
+    // Extract the score from the feedback (e.g., "Score: 4/10")
+    const scoreMatch = overallFeedback.match(/Score:\s*(\d+)\/10/) || overallFeedback.match(/a (\d+) out of 10/);
+    const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 0;
+
+    // Remove the ** markers
+    const formattedFeedback = overallFeedback.replace(/\*\*/g, "");
+
+    return { feedback: formattedFeedback, score };
+  };
+
+  useEffect(() => {
+    if (completed) {
+      const fetchOverallFeedback = async () => {
+        const { feedback, score } = await generateOverallFeedback(feedbacks, selected.prompts);
+        setOverallFeedback(feedback);
+        setOverallScore(score);
+      };
+
+      fetchOverallFeedback();
+    }
+  }, [completed, feedbacks, selected.prompts]);
 
   return (
     <AnimatePresence>
@@ -317,6 +412,22 @@ export default function DemoPage() {
                   </div>
                 </motion.div>
               ))}
+              {completed && (
+                <div className="mt-8">
+                  <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
+                    Overall Feedback
+                  </h2>
+                  {overallFeedback.split("\n").map((line, index) => (
+                    <p key={index} className="prose prose-sm max-w-none">
+                      {line}
+                    </p>
+                  ))}
+                  <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mt-4 mb-2">
+                    Overall Score
+                  </h2>
+                  <p className="text-2xl font-bold">{overallScore}/10</p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="h-full w-full items-center flex flex-col mt-[10vh]">
@@ -376,7 +487,7 @@ export default function DemoPage() {
                               className="h-full object-cover w-full rounded-md md:rounded-[12px] aspect-video"
                               crossOrigin="anonymous"
                             >
-                             <source
+                              <source
                                 src={selected === questions[0] ? videoSources1[currentVideoIndex] : videoSources2[currentVideoIndex]}
                                 type="video/mp4"
                               />
@@ -526,7 +637,7 @@ export default function DemoPage() {
                               ) : (
                                 <button
                                   id="startTimer"
-                                  onClick={handleStartCaptureClick} // Directly call handleStartCaptureClick
+                                  onClick={handleStartCaptureClick}
                                   className="flex h-8 w-8 sm:h-8 sm:w-8 flex-col items-center justify-center rounded-full bg-red-500 text-white hover:shadow-xl ring-4 ring-white ring-offset-gray-500 ring-offset-2 active:scale-95 scale-100 duration-75"
                                 ></button>
                               )}
