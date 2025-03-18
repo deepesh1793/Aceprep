@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRef, useState, useEffect, useCallback } from "react";
 import Webcam from "react-webcam";
 import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const questions = [
   {
@@ -13,8 +14,12 @@ const questions = [
     description: "From LinkedIn, Amazon, Adobe",
     difficulty: "Easy",
     prompts: [
-      "Walk me through your resume and introduce yourself.",
-      "Tell me your strengths.",
+      // "Walk me through your resume and introduce yourself.",
+      // "Tell me your strengths.",
+    ],
+    topics: [
+      { id: 1, name: "Resume Walkthrough" },
+      { id: 2, name: "Strengths and Weaknesses" },
     ],
   },
   {
@@ -23,25 +28,28 @@ const questions = [
     description: "From Google, Meta, and Apple",
     difficulty: "Medium",
     prompts: [
-      "What is a Hash Table and its time complexities?",
-      "Explain the difference between a stack and a queue.",
+      // "What is a Hash Table and its time complexities?",
+      // "Explain the difference between a stack and a queue.",
+    ],
+    topics: [
+      { id: 1, name: "DSA" },
+      { id: 2, name: "OS" },
+      { id: 3, name: "OOPS" },
+      { id: 4, name: "DBMS" },
     ],
   },
 ];
 
 const videoSources1 = [
   "/videos/aiagent1.mp4",
-  "/videos/aiagent2.mp4",
-
+  "/videos/aiagent4.mp4",
 ];
 const videoSources2 = [
   "/videos/aiagent3.mp4",
-  "/videos/aiagent4.mp4",
+  "/videos/aiagent2.mp4",
 ];
 
 const ffmpeg = createFFmpeg({
-  // corePath: `http://localhost:3000/ffmpeg/dist/ffmpeg-core.js`,
-  // I've included a default import above (and files in the public directory), but you can also use a CDN like this:
   corePath: "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js",
   log: true,
 });
@@ -51,6 +59,7 @@ function classNames(...classes: string[]) {
 }
 
 export default function DemoPage() {
+  const [allQuestions, setAllQuestions] = useState<string[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("Tell me about yourself. Why don’t you walk me through your resume?");
   const [selected, setSelected] = useState(questions[0]);
   const [step, setStep] = useState(1);
@@ -75,19 +84,54 @@ export default function DemoPage() {
   const [feedbacks, setFeedbacks] = useState([]);
   const [overallFeedback, setOverallFeedback] = useState<string>("");
   const [overallScore, setOverallScore] = useState<number>(0);
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  const [isLoadingNextQuestion, setIsLoadingNextQuestion] = useState(false);
 
-  //ai agent video logic 
+  // Initialize Gemini API
+  const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
+
+  // Function to generate questions using Gemini API
+  const generateQuestionsWithGemini = async (topic: string) => {
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const prompt = `Generate 3 short and concise interview questions related to the topic: ${topic}. Ensure they are easy to medium difficulty and relevant for job interviews.`;
+      const response = await model.generateContent(prompt);
+      const result = await response.response;
+      const generatedQuestions = result.text().trim().split("\n"); // Split questions by newline
+      return generatedQuestions;
+    } catch (error) {
+      console.error("Error generating questions:", error);
+      return []; // Fallback to an empty array if the API fails
+    }
+  };
+
+  useEffect(() => {
+    if (selectedTopic) {
+      const fetchAllQuestions = async () => {
+        const questions = await generateQuestionsWithGemini(selectedTopic.name);
+        setAllQuestions(questions); // Store all questions in state
+        setSelected((prev) => ({ ...prev, prompts: questions })); // Update the selected prompts
+      };
+      fetchAllQuestions();
+    }
+  }, [selectedTopic]);
+
+  // During the interview, use the pre-generated questions
+const handleNextQuestion = () => {
+  if (currentQuestionIndex < allQuestions.length - 1) {
+    setCurrentQuestionIndex(currentQuestionIndex + 1); // Move to the next question
+  } else {
+    setCompleted(true); // Mark the interview as completed
+  }
+};
+
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
   const handleVideoEnd = () => {
     setVideoEnded(true);
-
-
     const activeVideoSources = selected === questions[0] ? videoSources1 : videoSources2;
-
     const nextIndex = (currentVideoIndex + 1) % activeVideoSources.length;
     setCurrentVideoIndex(nextIndex);
-
   };
 
   useEffect(() => {
@@ -97,14 +141,11 @@ export default function DemoPage() {
   useEffect(() => {
     if (videoEnded) {
       const element = document.getElementById("startTimer");
-
       if (element) {
         element.style.display = "flex";
       }
-
       setCapturing(true);
       setIsVisible(false);
-
       mediaRecorderRef.current = new MediaRecorder(
         webcamRef?.current?.stream as MediaStream
       );
@@ -121,7 +162,6 @@ export default function DemoPage() {
     if (startTimer) {
       startTimer.style.display = "none";
     }
-
     if (vidRef.current) {
       vidRef.current.play();
     }
@@ -164,68 +204,78 @@ export default function DemoPage() {
     if (recordedChunks.length) {
       setSubmitting(true);
       setStatus("Processing");
-
-      const file = new Blob(recordedChunks, {
-        type: `video/webm`,
-      });
-
-      const unique_id = uuid();
-
-      if (!ffmpeg.isLoaded()) {
-        await ffmpeg.load();
-      }
-
-      ffmpeg.FS("writeFile", `${unique_id}.webm`, await fetchFile(file));
-      await ffmpeg.run(
-        "-i",
-        `${unique_id}.webm`,
-        "-vn",
-        "-acodec",
-        "libmp3lame",
-        "-ac",
-        "1",
-        "-ar",
-        "16000",
-        "-f",
-        "mp3",
-        `${unique_id}.mp3`
-      );
-
-      const fileData = ffmpeg.FS("readFile", `${unique_id}.mp3`);
-      const output = new File([fileData.buffer], `${unique_id}.mp3`, {
-        type: "audio/mp3",
-      });
-
-      const formData = new FormData();
-      formData.append("file", output, `${unique_id}.mp3`);
-      formData.append("model", "whisper-1");
-
-      const question = selected.prompts[currentQuestionIndex];
-
-      setStatus("Transcribing");
-
-      const upload = await fetch(
-        `/api/transcribe?question=${encodeURIComponent(question)}`,
-        {
-          method: "POST",
-          body: formData,
+  
+      try {
+        // Convert recorded chunks to a video file
+        const file = new Blob(recordedChunks, {
+          type: `video/webm`,
+        });
+  
+        const unique_id = uuid();
+  
+        // Load FFmpeg if not already loaded
+        if (!ffmpeg.isLoaded()) {
+          await ffmpeg.load();
         }
-      );
-      const results = await upload.json();
-
-      if (upload.ok) {
-        setIsSuccess(true); // Set success state for the current question
-        setSubmitting(false);
-
-        // Process transcript and feedback
-        let transcriptText = results.error ? results.error : results.transcript;
-
-        const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${transcriptText}. ${selected.name === "Behavioral"
-          ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks)."
-          : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question."
-          } \n\n\ Feedback on the candidate's response:`;
-
-        const response = await fetch("/api/generate", {
+  
+        // Write the video file to FFmpeg's file system
+        ffmpeg.FS("writeFile", `${unique_id}.webm`, await fetchFile(file));
+  
+        // Convert video to audio (MP3)
+        await ffmpeg.run(
+          "-i",
+          `${unique_id}.webm`,
+          "-vn",
+          "-acodec",
+          "libmp3lame",
+          "-ac",
+          "1",
+          "-ar",
+          "16000",
+          "-f",
+          "mp3",
+          `${unique_id}.mp3`
+        );
+  
+        // Read the converted audio file
+        const fileData = ffmpeg.FS("readFile", `${unique_id}.mp3`);
+        const output = new File([fileData.buffer], `${unique_id}.mp3`, {
+          type: "audio/mp3",
+        });
+  
+        // Prepare form data for transcription API
+        const formData = new FormData();
+        formData.append("file", output, `${unique_id}.mp3`);
+        formData.append("model", "whisper-1");
+  
+        const question = allQuestions[currentQuestionIndex]; // Use pre-generated questions
+  
+        setStatus("Transcribing");
+  
+        // Send the audio file to the transcription API
+        const upload = await fetch(
+          `/api/transcribe?question=${encodeURIComponent(question)}`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+  
+        if (!upload.ok) {
+          throw new Error("Transcription failed");
+        }
+  
+        const results = await upload.json();
+        const transcriptText = results.error ? results.error : results.transcript;
+  
+        // Generate feedback using the transcript
+        const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${transcriptText}. ${
+          selected.name === "Behavioral"
+            ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks)."
+            : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question."
+        } \n\n\ Feedback on the candidate's response:`;
+  
+        const feedbackResponse = await fetch("/api/generate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -234,46 +284,48 @@ export default function DemoPage() {
             prompt,
           }),
         });
-
-        if (!response.ok) {
-          throw new Error(response.statusText);
+  
+        if (!feedbackResponse.ok) {
+          throw new Error("Feedback generation failed");
         }
-
-        const data = response.body;
-        if (!data) {
-          return;
+  
+        const feedbackData = feedbackResponse.body;
+        if (!feedbackData) {
+          throw new Error("No feedback data received");
         }
-
-        const reader = data.getReader();
+  
+        // Stream the feedback response
+        const reader = feedbackData.getReader();
         const decoder = new TextDecoder();
         let done = false;
         let feedbackText = "";
-
+  
         while (!done) {
           const { value, done: doneReading } = await reader.read();
           done = doneReading;
           const chunkValue = decoder.decode(value);
           feedbackText += chunkValue;
         }
-
-        // Store the response and feedback
+  
+        // Update state with the response and feedback
         setResponses((prev) => [...prev, transcriptText]);
         setFeedbacks((prev) => [...prev, feedbackText]);
-
-        // Move to the next question or finish
-        if (currentQuestionIndex < selected.prompts.length - 1) {
-          setCurrentQuestionIndex(currentQuestionIndex + 1);
-          restartVideo(); // Reset the video recording for the next question
-        } else {
-          setCompleted(true); // All questions answered, show feedback
-        }
-      } else {
-        console.error("Upload failed.");
+  
+        // Move to the next question or complete the interview
+        handleNextQuestion();
+  
+        // Reset video and UI for the next question
+        restartVideo();
+      } catch (error) {
+        console.error("Error in handleDownload:", error);
+        setStatus("Failed");
+        setIsSuccess(false);
+      } finally {
+        setSubmitting(false);
+        setTimeout(() => {
+          setRecordedChunks([]); // Clear recorded chunks after processing
+        }, 1500);
       }
-
-      setTimeout(function () {
-        setRecordedChunks([]);
-      }, 1500);
     }
   };
 
@@ -283,7 +335,7 @@ export default function DemoPage() {
     setCapturing(false);
     setIsVisible(true);
     setSeconds(150);
-    setIsSuccess(false); // Reset the success state
+    setIsSuccess(false);
   }
 
   const videoConstraints = isDesktop
@@ -344,11 +396,9 @@ export default function DemoPage() {
       overallFeedback += chunkValue;
     }
 
-    // Extract the score from the feedback (e.g., "Score: 4/10")
     const scoreMatch = overallFeedback.match(/Score:\s*(\d+)\/10/) || overallFeedback.match(/a (\d+) out of 10/);
     const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 0;
 
-    // Remove the ** markers
     const formattedFeedback = overallFeedback.replace(/\*\*/g, "");
 
     return { feedback: formattedFeedback, score };
@@ -433,12 +483,40 @@ export default function DemoPage() {
             <div className="h-full w-full items-center flex flex-col mt-[10vh]">
               {recordingPermission ? (
                 <div className="w-full flex flex-col max-w-[1080px] mx-auto justify-center">
+
+                  {isLoadingNextQuestion ?(
+                  <div className="flex items-center justify-center">
+                    <svg
+                      className="animate-spin h-5 w-5 text-[#1D2B3A] mx-auto my-0.5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    <span className="ml-2">Generating next question...</span>
+                  </div>
+                ) : (
+                  <>
+                  
                   <h2 className="text-2xl font-semibold text-left text-[#1D2B3A] mb-2">
                     {selected.prompts[currentQuestionIndex]}
                   </h2>
                   <motion.div
                     initial={{ y: -20 }}
-                    animate={{ y: 0 }}
+                    animate={{ y: 0 }}  
                     transition={{
                       duration: 0.35,
                       ease: [0.075, 0.82, 0.965, 1],
@@ -475,7 +553,7 @@ export default function DemoPage() {
                           {new Date(seconds * 1000).toISOString().slice(14, 19)}
                         </span>
                       </div>
-                      {isVisible && ( // If the video is visible (on screen) we show it
+                      {isVisible && (
                         <div className="block absolute top-[10px] sm:top-[20px] lg:top-[40px] left-auto right-[10px] sm:right-[20px] md:right-10 h-[80px] sm:h-[140px] md:h-[180px] aspect-video rounded z-20">
                           <div className="h-full w-full aspect-video rounded md:rounded-lg lg:rounded-xl">
                             <video
@@ -488,7 +566,7 @@ export default function DemoPage() {
                               crossOrigin="anonymous"
                             >
                               <source
-                                src={selected === questions[0] ? videoSources1[currentVideoIndex] : videoSources2[currentVideoIndex]}
+                                src={ videoSources1[1]}
                                 type="video/mp4"
                               />
                             </video>
@@ -663,6 +741,8 @@ export default function DemoPage() {
                     className="flex flex-row space-x-1 mt-4 items-center"
                   >
                   </motion.div>
+                  </>
+                )}
                 </div>
               ) : (
                 <div className="w-full flex flex-col max-w-[1080px] mx-auto justify-center">
@@ -697,9 +777,147 @@ export default function DemoPage() {
             </div>
           )}
         </div>
+      ) : step === 2 ? (
+        <div className="flex flex-col md:flex-row w-full md:overflow-hidden">
+          <div className="w-full min-h-[60vh] md:w-1/2 md:h-screen flex flex-col px-4 pt-2 pb-8 md:px-0 md:py-2 bg-[#FCFCFC] justify-center">
+            <div className="h-full w-full items-center justify-center flex flex-col">
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -40 }}
+                key="step-2"
+                transition={{
+                  duration: 0.95,
+                  ease: [0.165, 0.84, 0.44, 1],
+                }}
+                className="max-w-lg mx-auto px-4 lg:px-0"
+              >
+                <h2 className="text-4xl font-bold text-[#1E2B3A]">
+                  Select a topic
+                </h2>
+                <p className="text-[14px] leading-[20px] text-[#1a2b3b] font-normal my-4">
+                  Choose a specific topic to practice
+                </p>
+                <div>
+                  <RadioGroup value={selectedTopic} onChange={setSelectedTopic}>
+                    <RadioGroup.Label className="sr-only">
+                      Topic
+                    </RadioGroup.Label>
+                    <div className="space-y-4">
+                      {selected.topics.map((topic) => (
+                        <RadioGroup.Option
+                          key={topic.id}
+                          value={topic}
+                          className={({ checked, active }) =>
+                            classNames(
+                              checked
+                                ? "border-transparent"
+                                : "border-gray-300",
+                              active
+                                ? "border-blue-500 ring-2 ring-blue-200"
+                                : "",
+                              "relative cursor-pointer rounded-lg border bg-white px-6 py-4 shadow-sm focus:outline-none flex justify-between"
+                            )
+                          }
+                        >
+                          {({ active, checked }) => (
+                            <>
+                              <span className="flex items-center">
+                                <span className="flex flex-col text-sm">
+                                  <RadioGroup.Label
+                                    as="span"
+                                    className="font-medium text-gray-900"
+                                  >
+                                    {topic.name}
+                                  </RadioGroup.Label>
+                                </span>
+                              </span>
+                              <span
+                                className={classNames(
+                                  active ? "border" : "border-2",
+                                  checked
+                                    ? "border-blue-500"
+                                    : "border-transparent",
+                                  "pointer-events-none absolute -inset-px rounded-lg"
+                                )}
+                                aria-hidden="true"
+                              />
+                            </>
+                          )}
+                        </RadioGroup.Option>
+                      ))}
+                    </div>
+                  </RadioGroup>
+                </div>
+                <div className="flex gap-[15px] justify-end mt-8">
+                  <div>
+                    <button
+                      onClick={() => setStep(1)}
+                      className="group rounded-full px-4 py-2 text-[13px] font-semibold transition-all flex items-center justify-center bg-[#f5f7f9] text-[#1E2B3A] no-underline active:scale-95 scale-100 duration-75"
+                      style={{
+                        boxShadow: "0 1px 1px #0c192714, 0 1px 3px #0c192724",
+                      }}
+                    >
+                      Back
+                    </button>
+                  </div>
+                  <div>
+                    <button
+                      onClick={() => setStep(3)}
+                      disabled={!selectedTopic}
+                      className="group rounded-full px-4 py-2 text-[13px] font-semibold transition-all flex items-center justify-center bg-[#1E2B3A] text-white hover:[linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)), #0D2247] no-underline flex gap-x-2  active:scale-95 scale-100 duration-75 disabled:opacity-50"
+                      style={{
+                        boxShadow:
+                          "0px 1px 4px rgba(13, 34, 71, 0.17), inset 0px 0px 0px 1px #061530, inset 0px 0px 0px 2px rgba(255, 255, 255, 0.1)",
+                      }}
+                    >
+                      <span> Continue </span>
+                      <svg
+                        className="w-5 h-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M13.75 6.75L19.25 12L13.75 17.25"
+                          stroke="#FFF"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M19 12H4.75"
+                          stroke="#FFF"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+          <div className="w-full h-[40vh] md:w-1/2 md:h-screen bg-[#F1F2F4] relative overflow-hidden">
+            <div
+              className="absolute md:top-1/2 left-1/2 transform -translate-x-1/2 md:-mt-[240px] ml-[-380px] md:ml-0 scale-[0.5] sm:scale-[0.6] md:scale-[130%] w-[450px] h-[420px] bg-[#f5f7f9] text-[9px] origin-[50%_15%] md:origin-[50%_25%] rounded-[15px] overflow-hidden p-2 z-20 shadow-lg"
+              style={{
+                grid: "100%/repeat(1,calc(5px * 28)) 1fr",
+                boxShadow:
+                  "0 192px 136px rgba(26,43,59,.23),0 70px 50px rgba(26,43,59,.16),0 34px 24px rgba(26,43,59,.13),0 17px 12px rgba(26,43,59,.1),0 7px 5px rgba(26,43,59,.07), 0 50px 100px -20px rgb(50 50 93 / 25%), 0 30px 60px -30px rgb(0 0 0 / 30%), inset 0 -2px 6px 0 rgb(10 37 64 / 35%)",
+              }}
+            >
+              <img
+                src="/qnmark.png"
+                alt="Full image"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="flex flex-col md:flex-row w-full md:overflow-hidden">
-
           <div className="w-full min-h-[60vh] md:w-1/2 md:h-screen flex flex-col px-4 pt-2 pb-8 md:px-0 md:py-2 bg-[#FCFCFC] justify-center">
             <div className="h-full w-full items-center justify-center flex flex-col">
               {step === 1 ? (
@@ -867,7 +1085,7 @@ export default function DemoPage() {
                     <div>
                       <button
                         onClick={() => {
-                          setStep(3);
+                          setStep(2);
                         }}
                         className="group rounded-full px-4 py-2 text-[13px] font-semibold transition-all flex items-center justify-center bg-[#1E2B3A] text-white hover:[linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)), #0D2247] no-underline flex gap-x-2  active:scale-95 scale-100 duration-75"
                         style={{
@@ -907,10 +1125,8 @@ export default function DemoPage() {
             </div>
           </div>
           <div className="w-full h-[40vh] md:w-1/2 md:h-screen bg-[#F1F2F4] relative overflow-hidden">
-
             <div
               className="absolute md:top-1/2 left-1/2 transform -translate-x-1/2 md:-mt-[240px] ml-[-380px] md:ml-0 scale-[0.5] sm:scale-[0.6] md:scale-[130%] w-[450px] h-[420px] bg-[#f5f7f9] text-[9px] origin-[50%_15%] md:origin-[50%_25%] rounded-[15px] overflow-hidden p-2 z-20 shadow-lg"
-
               style={{
                 grid: "100%/repeat(1,calc(5px * 28)) 1fr",
                 boxShadow:
