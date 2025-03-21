@@ -94,7 +94,7 @@ export default function DemoPage() {
   const generateQuestionsWithGemini = async (topic: string) => {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const prompt = `Generate 3 short and concise interview questions related to the topic: ${topic}. Ensure they are easy to medium difficulty and relevant for job interviews.`;
+      const prompt = `Generate 5 short and concise random interview questions related to the topic: ${topic}. Ensure they are easy to medium difficulty and relevant for job interviews.`;
       const response = await model.generateContent(prompt);
       const result = await response.response;
       const generatedQuestions = result.text().trim().split("\n"); // Split questions by newline
@@ -462,22 +462,28 @@ const handleNextQuestion = () => {
                   </div>
                 </motion.div>
               ))}
-              {completed && (
-                <div className="mt-8">
-                  <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
-                    Overall Feedback
-                  </h2>
-                  {overallFeedback.split("\n").map((line, index) => (
-                    <p key={index} className="prose prose-sm max-w-none">
-                      {line}
-                    </p>
-                  ))}
-                  <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mt-4 mb-2">
-                    Overall Score
-                  </h2>
-                  <p className="text-2xl font-bold">{overallScore}/10</p>
-                </div>
-              )}
+             {completed && (
+  <div className="mt-8 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6">
+    <h2 className="text-2xl font-bold text-[#1D2B3A] dark:text-white mb-3">
+      🎯 Overall Feedback
+    </h2>
+    <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg shadow-md">
+      {overallFeedback.split("\n").map((line, index) => (
+        <p key={index} className="text-gray-700 dark:text-gray-200 leading-relaxed">
+          {line}
+        </p>
+      ))}
+    </div>
+
+    <h2 className="text-2xl font-bold text-[#1D2B3A] dark:text-white mt-6 mb-3">
+      🌟 Overall Score
+    </h2>
+    <div className="flex items-center justify-center bg-blue-500 text-white font-bold text-3xl p-4 rounded-lg shadow-md">
+      {overallScore} / 10
+    </div>
+  </div>
+)}
+
             </div>
           ) : (
             <div className="h-full w-full items-center flex flex-col mt-[10vh]">
