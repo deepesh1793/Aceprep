@@ -419,49 +419,47 @@ const handleNextQuestion = () => {
   return (
     <AnimatePresence>
       {step === 3 ? (
-        <div className="w-full min-h-screen flex flex-col px-4 pt-2 pb-8 md:px-8 md:py-2 bg-[#FCFCFC] relative overflow-x-hidden">
-          {completed ? (
-            <div className="w-full flex flex-col max-w-[1080px] mx-auto mt-[10vh] overflow-y-auto pb-8 md:pb-12">
-              {selected.prompts.map((question, index) => (
-                <motion.div
-                  key={question}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    delay: 0.5,
-                    duration: 0.15,
-                    ease: [0.23, 1, 0.82, 1],
-                  }}
-                  className="mt-8 flex flex-col"
-                >
-                  <div>
-                    <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
-                      Question {index + 1}
-                    </h2>
-                    <p className="prose prose-sm max-w-none">
-                      {selected.prompts[index]}
-                    </p>
-                  </div>
-                  <div className="mt-4">
-                    <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
-                      Your Response
-                    </h2>
-                    <p className="prose prose-sm max-w-none">
-                      {responses[index]}
-                    </p>
-                  </div>
-                  <div className="mt-4">
-                    <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
-                      Feedback
-                    </h2>
-                    <div className="mt-4 text-sm flex gap-2.5 rounded-lg border border-[#EEEEEE] bg-[#FAFAFA] p-4 leading-6 text-gray-900 min-h-[100px]">
-                      <p className="prose prose-sm max-w-none">
-                        {feedbacks[index]}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+  <div className="w-full min-h-screen flex flex-col px-4 pt-2 pb-8 md:px-8 md:py-2 bg-[#FCFCFC] relative overflow-x-hidden">
+    {completed ? (
+      <div className="w-full flex flex-col max-w-[1080px] mx-auto mt-[10vh] overflow-y-auto pb-8 md:pb-12">
+        {selected.prompts.map((question, index) => (
+          <motion.div
+            key={question}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              delay: 0.5,
+              duration: 0.15,
+              ease: [0.23, 1, 0.82, 1],
+            }}
+            className="mt-8 flex flex-col p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-lg"
+          >
+            <div>
+              <h2 className="text-2xl font-bold text-[#1D2B3A] dark:text-white mb-3">
+                ❓ Question {index + 1}
+              </h2>
+              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+                {selected.prompts[index]}
+              </p>
+            </div>
+            <div className="mt-6">
+              <h2 className="text-2xl font-bold text-[#1D2B3A] dark:text-white mb-3">
+                📝 Your Response
+              </h2>
+              <p className="text-lg text-gray-800 dark:text-gray-300 leading-relaxed">
+                {responses[index]}
+              </p>
+            </div>
+            <div className="mt-6">
+              <h2 className="text-2xl font-bold text-[#1D2B3A] dark:text-white mb-3">
+                ✅ Feedback
+              </h2>
+              <div className="text-lg flex gap-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 p-4 leading-7 text-gray-900 dark:text-gray-200 min-h-[100px]">
+                <p className="leading-relaxed">{feedbacks[index]}</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
              {completed && (
   <div className="mt-8 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6">
     <h2 className="text-2xl font-bold text-[#1D2B3A] dark:text-white mb-3">
