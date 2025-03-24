@@ -99,7 +99,7 @@ export default function DemoPage() {
   const generateQuestionsWithGemini = async (topic: string) => {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const prompt = `Generate 3 short and concise random interview questions related to the topic: ${topic}. Ensure they are easy to medium difficulty and relevant for job interviews.`;
+      const prompt = `Generate 5 short and concise random interview questions related to the topic: ${topic}. Ensure they are easy to medium difficulty and relevant for job interviews.`;
       const response = await model.generateContent(prompt);
       const result = await response.response;
       const generatedQuestions = result.text().trim().split("\n"); // Split questions by newline
