@@ -9,4 +9,4 @@
 
 ## Introduction
 
-AcePrep is an interview preparation tool that provides AI feedback on your mock interviews.
+Aceprep is an AI-powered mock interview platform that personalizes questions, evaluates responses, and provides insightful feedback to help candidates excel in job interviews
