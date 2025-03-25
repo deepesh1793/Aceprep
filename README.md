@@ -23,5 +23,5 @@ To set up AcePrep AI locally, follow these steps:
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/your-repo/AcePrep-AI.git
+   https://github.com/deepesh1793/Aceprep.git
    cd AcePrep-AI
