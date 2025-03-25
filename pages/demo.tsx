@@ -131,7 +131,7 @@ export default function DemoPage() {
 
       fetchAllQuestions();
     }
-  }, [selectedTopic, router, isLoadingResumeQuestions, allQuestions]);
+  }, [selectedTopic, router, isLoadingResumeQuestions]);
 
   useEffect(() => {
     const resumeQuestions = sessionStorage.getItem('resumeQuestions');
@@ -323,8 +323,8 @@ export default function DemoPage() {
 
         // Generate feedback using the transcript
         const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${transcriptText}. ${selected.name === "Behavioral"
-          ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks). Be critical with your feedback and provide actionable advice.Dont give positive reviews if transcipt is empty or irrelevant"
-          : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question. Be critical with your feedback and provide actionable advice. Dont give positive reviews if transcipt is empty or irrelevant"
+          ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks). Be critical with your feedback and provide actionable advice.If no transcript is recieved or it is irrelevent, make sure to mention that in the feedback. Be strict with your feedback."
+          : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question. Be critical with your feedback and provide actionable advice. If no transcript is recieved or it is irrelevent, make sure to mention that in the feedback. Be strict with your feedback."
           } \n\n\ Feedback on the candidate's response:`;
 
         const feedbackResponse = await fetch("/api/generate", {
@@ -414,11 +414,11 @@ export default function DemoPage() {
       ---
   
       Based on the feedback above, provide an overall evaluation of the candidate's performance. Include the following:
-      1. Strengths: What did the candidate do well across all responses?
+      1. Strengths: What did the candidate do well across all responses? If none is found, mention that.
       2. Weaknesses: What areas need improvement?
       3. Suggestions: Provide actionable advice for the candidate to improve their interview skills.
       4. Overall Assessment: Summarize the candidate's performance in one or two sentences.
-      5. Score: Provide a score out of 10 based on their performance. Consider factors like clarity, relevance, communication skills, and technical accuracy (if applicable). The score should be displayed as "Score: X/10".
+      5. Score: Provide a score out of 10 based on their performance. Consider factors like clarity, relevance, communication skills, and technical accuracy (if applicable). The score should be displayed as "Score: X/10". Be very critical with your evaluation.
   
       Ensure the feedback is constructive, professional, and tailored to help the candidate improve. The scoring and feedback should be strict
     `;
